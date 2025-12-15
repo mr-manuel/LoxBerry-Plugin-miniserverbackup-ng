@@ -1937,8 +1937,6 @@ Content-Transfer-Encoding: 8bit
     </head>
     <body>
         <div>
-            <img style=\"width: 100%; max-width: 800px;\" src=\"cid:logo_".$datetime->format("Y-m-d_i\hh\mH\s")."\" alt=\"Miniserver Backup NG\"><br>
-            <br>
             ".$L["EMAIL.EMAIL_BODY"]."<br>
             <br><hr>
             ".preg_replace('/(^<br>|<br>\\s<br>+)/i', '', $err_html)."<br>
