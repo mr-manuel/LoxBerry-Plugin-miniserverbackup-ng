@@ -1903,7 +1903,7 @@ if ( ( $at_least_one_error == 1 || $at_least_one_warning == 1 || $at_least_one_s
                 // $status .= "=E2=9C=85"; // Checkmark
             }
 
-            $html = "From: ".$mailFromName." <".$mailFrom.">
+html = "From: ".$mailFromName." <".$mailFrom.">
 To: ".$mailTo."
 Subject: =?utf-8?Q? ".$L["EMAIL.EMAIL_SUBJECT"]." - ".$status." ?=
 MIME-Version: 1.0
@@ -1920,10 +1920,6 @@ Content-Transfer-Encoding: 8bit
 \n--\n".strip_tags($L["EMAIL.EMAIL_SINATURE"])."
 
 --------------".$outer_boundary."
-Content-Type: multipart/related;
- boundary=\"------------".$inner_boundary."\"
-
---------------".$inner_boundary."
 Content-Type: text/html; charset=utf-8
 Content-Transfer-Encoding: 8bit
 
@@ -1945,15 +1941,8 @@ Content-Transfer-Encoding: 8bit
     </body>
 </html>
 
---------------".$inner_boundary."
-Content-Type: image/jpeg; name=\"logo_".$datetime->format("Y-m-d_i\hh\mH\s").".png\"
-Content-Transfer-Encoding: base64
-Content-ID: <logo_".$datetime->format("Y-m-d_i\hh\mH\s").">
-Content-Disposition: inline; filename=\"logo_".$datetime->format("Y-m-d_i\hh\mH\s").".png\"
-
-".chunk_split(base64_encode(file_get_contents('logo.png')))."
---------------".$inner_boundary."--
 --------------".$outer_boundary."--";
+
             $condition = "";
             switch (strtolower($plugin_cfg['MSBACKUP_USE_EMAILS']))
             {
