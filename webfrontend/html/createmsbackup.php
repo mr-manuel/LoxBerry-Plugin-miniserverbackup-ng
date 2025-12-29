@@ -1905,65 +1905,57 @@ if ( ( $at_least_one_error == 1 || $at_least_one_warning == 1 || $at_least_one_s
                 // $status .= "=E2=9C=85"; // Checkmark
             }
 
-// --- Build email (fixed: use $html and a heredoc; provide fallbacks) ---
-$mailTo = implode(",", array_filter(array_map('trim', explode(";", $plugin_cfg['EMAIL_RECIPIENT']))));
-if (!isset($mailFrom) || $mailFrom == "") {
- $mailFrom = "loxberry@localhost"; // Fallback-Adresse
-}
-if (!isset($mailFromName) || $mailFromName == "") {
- $mailFromName = "LoxBerry";
-}
+    // --- Build email (fixed: use $html and a heredoc; provide fallbacks) ---
+    $mailTo = implode(",", array_filter(array_map('trim', explode(";", $plugin_cfg['EMAIL_RECIPIENT']))));
+    if (!isset($mailFrom) || $mailFrom == "") {
+        $mailFrom = "loxberry@localhost"; // Fallback-Adresse
+    }
+    if (!isset($mailFromName) || $mailFromName == "") {
+        $mailFromName = "LoxBerry";
+    }
 
-$subject = $L["EMAIL.EMAIL_SUBJECT"]." - ".$status;
+    $subject = $L["EMAIL.EMAIL_SUBJECT"]." - ".$status;
 
-// Plaintext-Teil
-$plain_body = strip_tags($L["EMAIL.EMAIL_BODY"])."\n".strip_tags(implode("\n", $summary))."\n\n--\n".strip_tags($L["EMAIL.EMAIL_SINATURE"]);
+    // Plaintext-Teil
+    $plain_body = strip_tags($L["EMAIL.EMAIL_BODY"])."\n".strip_tags(implode("\n", $summary))."\n\n--\n".strip_tags($L["EMAIL.EMAIL_SINATURE"]);
 
-// HTML-Variablen, damit die Heredoc-Interpolation sauber ist
-$_EMAIL_BODY = $L["EMAIL.EMAIL_BODY"];
-$_ERR_HTML   = $err_html;
-$_EMAIL_SIN  = $L["EMAIL.EMAIL_SINATURE"];
+    // HTML-Variablen vorbereiten
+    $_EMAIL_BODY = $L["EMAIL.EMAIL_BODY"];
+    $_ERR_HTML   = $err_html;
+    $_EMAIL_SIN  = $L["EMAIL.EMAIL_SINATURE"];
 
-// Multipart-MIME mit Heredoc (interpoliert Variablen)
-$html = <<<EOM
-From: {$mailFromName} <{$mailFrom}>
-To: {$mailTo}
-Subject: =?utf-8?Q? {$subject} ?=
-MIME-Version: 1.0
-Content-Type: multipart/alternative;
-boundary="------------{$outer_boundary}"
-
-This is a multi-part message in MIME format.
---------------{$outer_boundary}
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 8bit
-
-{$plain_body}
-
---------------{$outer_boundary}
-Content-Type: text/html; charset=utf-8
-Content-Transfer-Encoding: 8bit
-
-<html>
- <head>
-	 <meta http-equiv="content-type" content="text/html; charset=utf-8">
-	 <style>
-		 body { margin: 0px; padding: 10px; color: #1e1e1e; background: #fafafa; font-family: 'Calibri', 'Verdana', sans-serif; }
-		 hr { margin: 4px 0;  }
-	 </style>
- </head>
- <body>
-	 <div>
-		 {$_EMAIL_BODY}<br>
-		 <br><hr>
-		 {$_ERR_HTML}<br>
-		 {$_EMAIL_SIN}
-	 </div>
- </body>
-</html>
-
---------------{$outer_boundary}--
-EOM;
+    // E-Mail-Inhalt per String-Verkettung aufbauen
+    $html = "From: " . $mailFromName . " <" . $mailFrom . ">\r\n";
+    $html .= "To: " . $mailTo . "\r\n";
+    $html .= "Subject: =?utf-8?Q?" . $subject . "?=\r\n";
+    $html .= "MIME-Version: 1.0\r\n";
+    $html .= "Content-Type: multipart/alternative; boundary=\"------------" . $outer_boundary . "\"\r\n\r\n";
+    $html .= "This is a multi-part message in MIME format.\r\n";
+    $html .= "--------------" . $outer_boundary . "\r\n";
+    $html .= "Content-Type: text/plain; charset=utf-8; format=flowed\r\n";
+    $html .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+    $html .= $plain_body . "\r\n\r\n";
+    $html .= "--------------" . $outer_boundary . "\r\n";
+    $html .= "Content-Type: text/html; charset=utf-8\r\n";
+    $html .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+    $html .= "<html>\r\n";
+    $html .= " <head>\r\n";
+    $html .= "    <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\">\r\n";
+    $html .= "    <style>\r\n";
+    $html .= "        body { margin: 0px; padding: 10px; color: #1e1e1e; background: #fafafa; font-family: 'Calibri', 'Verdana', sans-serif; }\r\n";
+    $html .= "        hr { margin: 4px 0;  }\r\n";
+    $html .= "    </style>\r\n";
+    $html .= " </head>\r\n";
+    $html .= " <body>\r\n";
+    $html .= "    <div>\r\n";
+    $html .= "        " . $_EMAIL_BODY . "<br>\r\n";
+    $html .= "        <br><hr>\r\n";
+    $html .= "        " . $_ERR_HTML . "<br>\r\n";
+    $html .= "        " . $_EMAIL_SIN . "\r\n";
+    $html .= "    </div>\r\n";
+    $html .= " </body>\r\n";
+    $html .= "</html>\r\n\r\n";
+    $html .= "--------------" . $outer_boundary . "--";
 
 		 $condition = "";
 		 switch (strtolower($plugin_cfg['MSBACKUP_USE_EMAILS']))
