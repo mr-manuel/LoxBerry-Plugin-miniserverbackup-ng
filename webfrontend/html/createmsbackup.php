@@ -1886,7 +1886,9 @@ if ( ( $at_least_one_error == 1 || $at_least_one_warning == 1 || $at_least_one_s
                 $mailFromName   = "\"LoxBerry\"";  // Sender name
             }
             }
+
             debug(__line__,$L["MINISERVERBACKUP.INF_0120_SEND_EMAIL_INFO"]." From: ".$mailFromName.htmlentities(" <".$mailFrom."> ")." To: ".$mailTo,6);
+
             if ( $at_least_one_error == 1 )
             {
                 $status = "FAILED";
@@ -1903,96 +1905,95 @@ if ( ( $at_least_one_error == 1 || $at_least_one_warning == 1 || $at_least_one_s
                 // $status .= "=E2=9C=85"; // Checkmark
             }
 
-            $html = "From: ".$mailFromName." <".$mailFrom.">
-To: ".$mailTo."
-Subject: =?utf-8?Q? ".$L["EMAIL.EMAIL_SUBJECT"]." - ".$status." ?=
-MIME-Version: 1.0
-Content-Type: multipart/alternative;
- boundary=\"------------".$outer_boundary."\"
-
-This is a multi-part message in MIME format.
---------------".$outer_boundary."
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 8bit
-
-".strip_tags($L["EMAIL.EMAIL_BODY"])."\n".strip_tags(implode("\n", $summary))."
-
-\n--\n".strip_tags($L["EMAIL.EMAIL_SINATURE"])."
-
---------------".$outer_boundary."
-Content-Type: multipart/related;
- boundary=\"------------".$inner_boundary."\"
-
---------------".$inner_boundary."
-Content-Type: text/html; charset=utf-8
-Content-Transfer-Encoding: 8bit
-
-<html>
-    <head>
-        <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\">
-        <style>
-            body { margin: 0px; padding: 10px; color: #1e1e1e; background: #fafafa; font-family: 'Calibri', 'Verdana', sans-serif; }
-            hr { margin: 4px 0;  }
-        </style>
-    </head>
-    <body>
-        <div>
-            <img style=\"width: 100%; max-width: 800px;\" src=\"cid:logo_".$datetime->format("Y-m-d_i\hh\mH\s")."\" alt=\"Miniserver Backup NG\"><br>
-            <br>
-            ".$L["EMAIL.EMAIL_BODY"]."<br>
-            <br><hr>
-            ".preg_replace('/(^<br>|<br>\\s<br>+)/i', '', $err_html)."<br>
-            ".$L["EMAIL.EMAIL_SINATURE"]."
-        </div>
-    </body>
-</html>
-
---------------".$inner_boundary."
-Content-Type: image/jpeg; name=\"logo_".$datetime->format("Y-m-d_i\hh\mH\s").".png\"
-Content-Transfer-Encoding: base64
-Content-ID: <logo_".$datetime->format("Y-m-d_i\hh\mH\s").">
-Content-Disposition: inline; filename=\"logo_".$datetime->format("Y-m-d_i\hh\mH\s").".png\"
-
-".chunk_split(base64_encode(file_get_contents('logo.png')))."
---------------".$inner_boundary."--
---------------".$outer_boundary."--";
-            $condition = "";
-            switch (strtolower($plugin_cfg['MSBACKUP_USE_EMAILS']))
-            {
-                case "on":
-                case "1":
-                    $condition = $L["GENERAL.TXT_LABEL_MSBACKUP_USE_EMAILS_ON"];
-                    break;
-                case "fail":
-                    $condition = $L["GENERAL.TXT_LABEL_MSBACKUP_USE_EMAILS_ERROR"];
-                    break;
-            }
-            if ( ( $plugin_cfg['MSBACKUP_USE_EMAILS'] == "fail" && $at_least_one_error == 1 ) || ( $plugin_cfg['MSBACKUP_USE_EMAILS'] == "on" || $plugin_cfg['MSBACKUP_USE_EMAILS'] == "1" ) )
-            {
-                debug(__line__,$L["MINISERVERBACKUP.INF_0125_SEND_EMAIL_ON_ERROR"]." ".$condition,6);
-                $tmpfname = tempnam("/tmp", "msbackup_mail_");
-                $handle = fopen($tmpfname, "w") or debug(__line__,$L["ERRORS.ERR_0056_ERR_OPEN_TEMPFILE_EMAIL"]." ".$tmpfname,4);
-                fwrite($handle, $html) or debug(__line__,$L["ERRORS.ERR_0057_ERR_WRITE_TEMPFILE_EMAIL"]." ".$tmpfname,4);
-                fclose($handle);
-                $resultarray = array();
-                @exec("/usr/sbin/sendmail -v -t 2>&1 < $tmpfname ",$resultarray,$retval);
-                unlink($tmpfname) or debug(__line__,$L["ERRORS.ERR_0058_ERR_DELETE_TEMPFILE_EMAIL"]." ".$tmpfname,4);
-                debug(__line__,"Sendmail:\n".htmlspecialchars(join("\n",$resultarray)),7);
-                if($retval)
-                {
-                    debug(__line__,$L["ERRORS.ERR_0059_ERR_SEND_EMAIL"]." ".array_pop($resultarray),3);
-                }
-                else
-                {
-                    debug(__line__,$L["MINISERVERBACKUP.INF_0121_EMAIL_SEND_OK"],5);
-                }
-            }
-            else
-            {
-                debug(__line__,$L["MINISERVERBACKUP.INF_0126_DO_NOT_SEND_EMAIL_ON_ERROR"]." ".$condition,6);
-            }
-        }
+    // --- Build email (fixed: use $html and a heredoc; provide fallbacks) ---
+    $mailTo = implode(",", array_filter(array_map('trim', explode(";", $plugin_cfg['EMAIL_RECIPIENT']))));
+    if (!isset($mailFrom) || $mailFrom == "") {
+        $mailFrom = "loxberry@localhost"; // Fallback-Adresse
     }
+    if (!isset($mailFromName) || $mailFromName == "") {
+        $mailFromName = "LoxBerry";
+    }
+
+    $subject = $L["EMAIL.EMAIL_SUBJECT"]." - ".$status;
+
+    // Plaintext-Teil
+    $plain_body = strip_tags($L["EMAIL.EMAIL_BODY"])."\n".strip_tags(implode("\n", $summary))."\n\n--\n".strip_tags($L["EMAIL.EMAIL_SINATURE"]);
+
+    // HTML-Variablen vorbereiten
+    $_EMAIL_BODY = $L["EMAIL.EMAIL_BODY"];
+    $_ERR_HTML   = $err_html;
+    $_EMAIL_SIN  = $L["EMAIL.EMAIL_SINATURE"];
+
+    // E-Mail-Inhalt per String-Verkettung aufbauen
+    $html = "From: " . $mailFromName . " <" . $mailFrom . ">\r\n";
+    $html .= "To: " . $mailTo . "\r\n";
+    $html .= "Subject: =?utf-8?Q?" . $subject . "?=\r\n";
+    $html .= "MIME-Version: 1.0\r\n";
+    $html .= "Content-Type: multipart/alternative; boundary=\"------------" . $outer_boundary . "\"\r\n\r\n";
+    $html .= "This is a multi-part message in MIME format.\r\n";
+    $html .= "--------------" . $outer_boundary . "\r\n";
+    $html .= "Content-Type: text/plain; charset=utf-8; format=flowed\r\n";
+    $html .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+    $html .= $plain_body . "\r\n\r\n";
+    $html .= "--------------" . $outer_boundary . "\r\n";
+    $html .= "Content-Type: text/html; charset=utf-8\r\n";
+    $html .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+    $html .= "<html>\r\n";
+    $html .= " <head>\r\n";
+    $html .= "    <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\">\r\n";
+    $html .= "    <style>\r\n";
+    $html .= "        body { margin: 0px; padding: 10px; color: #1e1e1e; background: #fafafa; font-family: 'Calibri', 'Verdana', sans-serif; }\r\n";
+    $html .= "        hr { margin: 4px 0;  }\r\n";
+    $html .= "    </style>\r\n";
+    $html .= " </head>\r\n";
+    $html .= " <body>\r\n";
+    $html .= "    <div>\r\n";
+    $html .= "        " . $_EMAIL_BODY . "<br>\r\n";
+    $html .= "        <br><hr>\r\n";
+    $html .= "        " . $_ERR_HTML . "<br>\r\n";
+    $html .= "        " . $_EMAIL_SIN . "\r\n";
+    $html .= "    </div>\r\n";
+    $html .= " </body>\r\n";
+    $html .= "</html>\r\n\r\n";
+    $html .= "--------------" . $outer_boundary . "--";
+
+		 $condition = "";
+		 switch (strtolower($plugin_cfg['MSBACKUP_USE_EMAILS']))
+		 {
+			 case "on":
+			 case "1":
+				 $condition = $L["GENERAL.TXT_LABEL_MSBACKUP_USE_EMAILS_ON"];
+				 break;
+			 case "fail":
+				 $condition = $L["GENERAL.TXT_LABEL_MSBACKUP_USE_EMAILS_ERROR"];
+				 break;
+		 }
+		 if ( ( $plugin_cfg['MSBACKUP_USE_EMAILS'] == "fail" && $at_least_one_error == 1 ) || ( $plugin_cfg['MSBACKUP_USE_EMAILS'] == "on" || $plugin_cfg['MSBACKUP_USE_EMAILS'] == "1" ) )
+		 {
+			 debug(__line__,$L["MINISERVERBACKUP.INF_0125_SEND_EMAIL_ON_ERROR"]." ".$condition,6);
+			 $tmpfname = tempnam("/tmp", "msbackup_mail_");
+			 $handle = fopen($tmpfname, "w") or debug(__line__,$L["ERRORS.ERR_0056_ERR_OPEN_TEMPFILE_EMAIL"]." ".$tmpfname,4);
+			 fwrite($handle, $html) or debug(__line__,$L["ERRORS.ERR_0057_ERR_WRITE_TEMPFILE_EMAIL"]." ".$tmpfname,4);
+			 fclose($handle);
+			 $resultarray = array();
+			 @exec("/usr/sbin/sendmail -v -t 2>&1 < $tmpfname ",$resultarray,$retval);
+			 unlink($tmpfname) or debug(__line__,$L["ERRORS.ERR_0058_ERR_DELETE_TEMPFILE_EMAIL"]." ".$tmpfname,4);
+			 debug(__line__,"Sendmail:\n".htmlspecialchars(join("\n",$resultarray)),7);
+			 if($retval)
+			 {
+				 debug(__line__,$L["ERRORS.ERR_0059_ERR_SEND_EMAIL"]." ".array_pop($resultarray),3);
+			 }
+			 else
+			 {
+				 debug(__line__,$L["MINISERVERBACKUP.INF_0121_EMAIL_SEND_OK"],5);
+			 }
+		 }
+		 else
+		 {
+			 debug(__line__,$L["MINISERVERBACKUP.INF_0126_DO_NOT_SEND_EMAIL_ON_ERROR"]." ".$condition,6);
+		 }
+	 }
+ }
 }
 else
 {
