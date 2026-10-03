@@ -60,36 +60,16 @@ $plugin_cfg["VERSION"] = LBSystem::pluginversion();
 
 ksort($plugin_cfg);
 
-$cfg = parse_ini_file(LBHOMEDIR . "/config/system/general.cfg", True, INI_SCANNER_RAW) or error_log("LoxBerry System ERROR: Could not read general.cfg in " . LBHOMEDIR . "/config/system/");
-$miniservercount = $cfg['BASE']['MINISERVERS'];
+// Miniserver data comes from the LoxBerry library (general.json), not from the legacy general.cfg
+$miniservers = LBSystem::get_miniservers();
 # If no miniservers are defined, return NULL
-if (!$miniservercount || $miniservercount < 1)
+if (!is_array($miniservers) || count($miniservers) < 1)
 {
     LOGERR ($L["ERRORS.ERR_0001_NO_MINISERVERS_CONFIGURED"]);
     LOGEND ("");
     die($output);
 }
 
-for ($msnr = 1; $msnr <= $miniservercount; $msnr++)
-{
-//    @$miniservers[$msnr]['Name'] = $cfg["MINISERVER$msnr"]['NAME'];
-    @$miniservers[$msnr]['IPAddress'] = $cfg["MINISERVER$msnr"]['IPADDRESS'];
-//    @$miniservers[$msnr]['Admin'] = $cfg["MINISERVER$msnr"]['ADMIN'];
-//    @$miniservers[$msnr]['Pass'] = $cfg["MINISERVER$msnr"]['PASS'];
-//    @$miniservers[$msnr]['Credentials'] = $miniservers[$msnr]['Admin'] . ':' . $miniservers[$msnr]['Pass'];
-//    @$miniservers[$msnr]['Note'] = $cfg["MINISERVER$msnr"]['NOTE'];
-//    @$miniservers[$msnr]['Port'] = $cfg["MINISERVER$msnr"]['PORT'];
-//    @$miniservers[$msnr]['PortHttps'] = $cfg["MINISERVER$msnr"]['PORTHTTPS'];
-//    @$miniservers[$msnr]['PreferHttps'] = $cfg["MINISERVER$msnr"]['PREFERHTTPS'];
-//    @$miniservers[$msnr]['UseCloudDNS'] = $cfg["MINISERVER$msnr"]['USECLOUDDNS'];
-//    @$miniservers[$msnr]['CloudURLFTPPort'] = $cfg["MINISERVER$msnr"]['CLOUDURLFTPPORT'];
-    @$miniservers[$msnr]['CloudURL'] = $cfg["MINISERVER$msnr"]['CLOUDURL'];
-//    @$miniservers[$msnr]['Admin_RAW'] = urldecode($miniservers[$msnr]['Admin']);
-//    @$miniservers[$msnr]['Pass_RAW'] = urldecode($miniservers[$msnr]['Pass']);
-//    @$miniservers[$msnr]['Credentials_RAW'] = $miniservers[$msnr]['Admin_RAW'] . ':' . $miniservers[$msnr]['Pass_RAW'];
-//    @$miniservers[$msnr]['SecureGateway'] = isset($cfg["MINISERVER$msnr"]['SECUREGATEWAY']) && is_enabled($cfg["MINISERVER$msnr"]['SECUREGATEWAY']) ? 1 : 0;
-//    @$miniservers[$msnr]['EncryptResponse'] = isset ($cfg["MINISERVER$msnr"]['ENCRYPTRESPONSE']) && is_enabled($cfg["MINISERVER$msnr"]['ENCRYPTRESPONSE']) ? 1 : 0;
-}
 $ms = $miniservers;
 
 if (!is_array($ms))
