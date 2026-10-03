@@ -197,12 +197,14 @@ if ( is_file($backupstate_file) )
 
 // Read Miniservers
 debug(__line__,$L["MINISERVERBACKUP.INF_0002_READ_MINISERVERS"]);
-$cfg = parse_ini_file(LBHOMEDIR . "/config/system/general.cfg", True, INI_SCANNER_RAW) or error_log("LoxBerry System ERROR: Could not read general.cfg in " . LBHOMEDIR . "/config/system/");
-$clouddnsaddress = $cfg['BASE']['CLOUDDNS'] or LOGERR ($L["ERRORS.ERR_0068_PROBLEM_READING_CLOUD_DNS_ADDR"]);
+// Miniserver data comes from the LoxBerry library (general.json). The legacy
+// general.cfg lacks PreferHttps/PortHttps and must not be used anymore.
+$miniservers = LBSystem::get_miniservers();
+// $clouddnsaddress is set by the library while reading general.json
+if (empty($clouddnsaddress)) LOGERR ($L["ERRORS.ERR_0068_PROBLEM_READING_CLOUD_DNS_ADDR"]);
 
 // If no miniservers are defined, return NULL
-$miniservercount = $cfg['BASE']['MINISERVERS'];
-if (!$miniservercount || $miniservercount < 1)
+if (!is_array($miniservers) || count($miniservers) < 1)
 {
     debug(__line__,$L["ERRORS.ERR_0001_NO_MINISERVERS_CONFIGURED"],3);
     $runtime = microtime(true) - $start;
@@ -212,27 +214,6 @@ if (!$miniservercount || $miniservercount < 1)
     LOGERR ($L["ERRORS.ERR_0000_EXIT"]." ".$runtime." s");
     LOGEND ("");
     exit(1);
-}
-
-for ($msnr = 1; $msnr <= $miniservercount; $msnr++)
-{
-    @$miniservers[$msnr]['Name'] = $cfg["MINISERVER$msnr"]['NAME'];
-    @$miniservers[$msnr]['IPAddress'] = $cfg["MINISERVER$msnr"]['IPADDRESS'];
-    @$miniservers[$msnr]['Admin'] = $cfg["MINISERVER$msnr"]['ADMIN'];
-    @$miniservers[$msnr]['Pass'] = $cfg["MINISERVER$msnr"]['PASS'];
-    @$miniservers[$msnr]['Credentials'] = $miniservers[$msnr]['Admin'] . ':' . $miniservers[$msnr]['Pass'];
-    @$miniservers[$msnr]['Note'] = $cfg["MINISERVER$msnr"]['NOTE'];
-    @$miniservers[$msnr]['Port'] = $cfg["MINISERVER$msnr"]['PORT'];
-    @$miniservers[$msnr]['PortHttps'] = $cfg["MINISERVER$msnr"]['PORTHTTPS'];
-    @$miniservers[$msnr]['PreferHttps'] = $cfg["MINISERVER$msnr"]['PREFERHTTPS'];
-    @$miniservers[$msnr]['UseCloudDNS'] = $cfg["MINISERVER$msnr"]['USECLOUDDNS'];
-    @$miniservers[$msnr]['CloudURLFTPPort'] = $cfg["MINISERVER$msnr"]['CLOUDURLFTPPORT'];
-    @$miniservers[$msnr]['CloudURL'] = $cfg["MINISERVER$msnr"]['CLOUDURL'];
-    @$miniservers[$msnr]['Admin_RAW'] = urldecode($miniservers[$msnr]['Admin']);
-    @$miniservers[$msnr]['Pass_RAW'] = urldecode($miniservers[$msnr]['Pass']);
-    @$miniservers[$msnr]['Credentials_RAW'] = $miniservers[$msnr]['Admin_RAW'] . ':' . $miniservers[$msnr]['Pass_RAW'];
-    @$miniservers[$msnr]['SecureGateway'] = isset($cfg["MINISERVER$msnr"]['SECUREGATEWAY']) && is_enabled($cfg["MINISERVER$msnr"]['SECUREGATEWAY']) ? 1 : 0;
-    @$miniservers[$msnr]['EncryptResponse'] = isset ($cfg["MINISERVER$msnr"]['ENCRYPTRESPONSE']) && is_enabled($cfg["MINISERVER$msnr"]['ENCRYPTRESPONSE']) ? 1 : 0;
 }
 
 $ms = $miniservers;
@@ -347,8 +328,8 @@ $all_cloudrequests = 0;
 for ( $msno = 1; $msno <= count($ms); $msno++ )
 {
     $miniserver = $ms[$msno];
-    $prefix = ($miniserver['PreferHttps'] == 1) ? "https://":"http://";
-    $port   = ($miniserver['PreferHttps'] == 1) ? $miniserver['PortHttps']:$miniserver['Port'];
+    $prefix = $miniserver['Transport']."://";
+    $port   = ($miniserver['Transport'] == "https") ? $miniserver['PortHttps']:$miniserver['Port'];
     $log->LOGTITLE($L["MINISERVERBACKUP.INF_0135_BACKUP_STARTED_MS"]." #".$msno." (".$miniserver['Name'].")");
     if (isset($argv[2]))
     {
@@ -665,7 +646,7 @@ for ( $msno = 1; $msno <= count($ms); $msno++ )
     {
         // Check for earlier Cloud DNS requests on RAM Disk
         touch($cloud_requests_file); // Touch file to prevent errors if inexistent
-        $checkurl = "http://".$cfg['BASE']['CLOUDDNS']."/?getip&snr=".$miniserver['CloudURL']."&json=true";
+        $checkurl = "http://".$clouddnsaddress."/?getip&snr=".$miniserver['CloudURL']."&json=true";
         $max_accepted_dns_errors     = 10;
         $dns_errors                 = 0;
         do
@@ -1019,7 +1000,7 @@ for ( $msno = 1; $msno <= count($ms); $msno++ )
                 {
                     // Check for earlier Cloud DNS requests on RAM Disk
                     touch($cloud_requests_file); // Touch file to prevent errors if inexistent
-                    $checkurl = "http://".$cfg['BASE']['CLOUDDNS']."/?getip&snr=".$miniserver['CloudURL']."&json=true";
+                    $checkurl = "http://".$clouddnsaddress."/?getip&snr=".$miniserver['CloudURL']."&json=true";
                     $max_accepted_dns_errors     = 10;
                     $dns_errors                 = 0;
                     do
@@ -2023,7 +2004,7 @@ exit;
 
 function get_connection_data($checkurl)
 {
-    global $different_cloudrequests,$connection_data_returncode,$all_cloudrequests,$known_for_today,$miniserver,$L,$msno,$workdir_tmp,$backupstate_file,$summary,$problematic_ms,$port,$prefix,$log,$date_time_format,$plugin_cfg,$cfg,$cloud_requests_file,$connection_data_returncode0,$manual_backup,$randomsleep;
+    global $different_cloudrequests,$connection_data_returncode,$all_cloudrequests,$known_for_today,$miniserver,$L,$msno,$workdir_tmp,$backupstate_file,$summary,$problematic_ms,$port,$prefix,$log,$date_time_format,$plugin_cfg,$cloud_requests_file,$connection_data_returncode0,$manual_backup,$randomsleep;
     $connection_data_returncode    = 0;
     if ( $miniserver['UseCloudDNS'] == "on" || $miniserver['UseCloudDNS'] == "1" )
     {
@@ -2165,7 +2146,7 @@ function get_connection_data($checkurl)
         // PortOpenHTTPS    (true/false)
         // DNS-Status         registered
         // RemoteConnect     (true/false)
-        $HTTPS_mode     =    ($miniserver['PreferHttps'] == 1) ? "HTTPS":"";
+        $HTTPS_mode     =    ($miniserver['Transport'] == "https") ? "HTTPS":"";
         $code            =    curl_getinfo($curl_dns,CURLINFO_RESPONSE_CODE);
 
         switch ($code)
@@ -2196,7 +2177,7 @@ function get_connection_data($checkurl)
                 }
                 else
                 {
-                    $port   = ($miniserver['PreferHttps'] == 1) ? 443:80;
+                    $port   = ($miniserver['Transport'] == "https") ? 443:80;
                 }
                 if ( $response["PortOpen".$HTTPS_mode] != "true" )
                 {

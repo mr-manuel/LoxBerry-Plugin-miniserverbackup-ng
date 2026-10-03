@@ -195,34 +195,16 @@ if ( $plugin->{PLUGINDB_LOGLEVEL} eq 7 )
         LOGDEB "Plugin config line => ".$_."=".$Config{$_};
     }
 }
-    my $miniservercount;
+    # Miniserver data comes from the LoxBerry library (general.json). The legacy
+    # general.cfg lacks PreferHttps/PortHttps and must not be used anymore.
+    my %miniservers = LoxBerry::System::get_miniservers();
+    my $miniservercount = keys %miniservers;
+    my $awkbin             = LoxBerry::System::get_binaries()->{AWK};
 
-    my %miniservers;
-    my $mscfg = new Config::Simple("$lbhomedir/config/system/general.cfg") or return undef;
-    $miniservercount = $mscfg->param("BASE.MINISERVERS") or Carp::carp ("BASE.MINISERVERS is 0 or not defined in general.cfg\n");
-    my $clouddnsaddress = $mscfg->param("BASE.CLOUDDNS"); # or Carp::carp ("BASE.CLOUDDNS not defined in general.cfg\n");
-    my $awkbin             = $mscfg->param("BINARIES.AWK");
+    foreach my $msnr (sort { $a <=> $b } keys %miniservers) {
+        $miniservers{$msnr}{PreferHttps} = $miniservers{$msnr}{Transport} eq "https" ? 1 : 0;
 
-    for (my $msnr = 1; $msnr <= $miniservercount; $msnr++) {
-        $miniservers{$msnr}{Name} = $mscfg->param("MINISERVER$msnr.NAME");
-        $miniservers{$msnr}{IPAddress} = $mscfg->param("MINISERVER$msnr.IPADDRESS");
-        $miniservers{$msnr}{Admin} = $mscfg->param("MINISERVER$msnr.ADMIN");
-        $miniservers{$msnr}{Pass} = $mscfg->param("MINISERVER$msnr.PASS");
-        $miniservers{$msnr}{Credentials} = $miniservers{$msnr}{Admin} . ':' . $miniservers{$msnr}{Pass};
-        $miniservers{$msnr}{Note} = $mscfg->param("MINISERVER$msnr.NOTE");
-        $miniservers{$msnr}{Port} = $mscfg->param("MINISERVER$msnr.PORT");
-        $miniservers{$msnr}{PortHttps} = $mscfg->param("MINISERVER$msnr.PORTHTTPS");
-        $miniservers{$msnr}{PreferHttps} = $mscfg->param("MINISERVER$msnr.PREFERHTTPS");
-        $miniservers{$msnr}{UseCloudDNS} = $mscfg->param("MINISERVER$msnr.USECLOUDDNS");
-        $miniservers{$msnr}{CloudURLFTPPort} = $mscfg->param("MINISERVER$msnr.CLOUDURLFTPPORT");
-        $miniservers{$msnr}{CloudURL} = $mscfg->param("MINISERVER$msnr.CLOUDURL");
-        $miniservers{$msnr}{Admin_RAW} = URI::Escape::uri_unescape($miniservers{$msnr}{Admin});
-        $miniservers{$msnr}{Pass_RAW} = URI::Escape::uri_unescape($miniservers{$msnr}{Pass});
-        $miniservers{$msnr}{Credentials_RAW} = $miniservers{$msnr}{Admin_RAW} . ':' . $miniservers{$msnr}{Pass_RAW};
-        $miniservers{$msnr}{SecureGateway} = $mscfg->param("MINISERVER$msnr.SECUREGATEWAY");
-        $miniservers{$msnr}{EncryptResponse} = $mscfg->param("MINISERVER$msnr.ENCRYPTRESPONSE");
-
-        if ( ($miniservers{$msnr}{UseCloudDNS} eq "on" || $miniservers{$msnr}{UseCloudDNS} eq "1" ) && ( $miniservers{$msnr}{CloudURL} ne ""  || $miniservers{$msnr}{CloudURL} ne "0" ))
+        if ( LoxBerry::System::is_enabled($miniservers{$msnr}{UseCloudDNS}) && $miniservers{$msnr}{CloudURL} ne "" )
         {
             $miniservers{$msnr}{IPAddress} = "CloudDNS";
         }
