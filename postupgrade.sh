@@ -28,6 +28,9 @@ rm -rf $ARGV5/data/plugins/tmp_miniserver_backups >/dev/null 2>&1
 echo "<INFO> Remove temporary folders"
 rm -r /tmp/$ARGV1\_upgrade
 
+# Do not restore the obsolete authentication placeholder from an old backup.
+install -m 0644 -- "$6/webfrontend/html/backups/.htaccess" "$ARGV5/webfrontend/html/plugins/$ARGV3/backups/.htaccess" || exit 2
+
 php -f $ARGV5/webfrontend/html/plugins/$ARGV3/ajax_config_handler.php >/dev/null 2>&1
 php -f $ARGV5/webfrontend/html/plugins/$ARGV3/createmsbackup.php symlink >/dev/null 2>&1
 

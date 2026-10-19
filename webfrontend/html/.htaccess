@@ -1,0 +1,5 @@
+Options -Indexes
+AuthType Basic
+AuthName "Loxberry Administration"
+AuthUserFile REPLACELBHOMEDIR/config/system/htusers.dat
+Require valid-user

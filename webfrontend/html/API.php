@@ -9,8 +9,7 @@
 ######################################################################################
 
 header("Content-type: text/plain");
-require_once "loxberry_system.php";
-require_once "loxberry_log.php";
+require_once __DIR__ . '/bootstrap.php';
 // Read language
 $L = LBSystem::readlanguage("language.ini");
 $plugin_config_file = $lbpconfigdir."/miniserverbackup-ng.cfg";

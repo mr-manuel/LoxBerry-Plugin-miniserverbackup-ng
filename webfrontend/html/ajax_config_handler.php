@@ -1,8 +1,7 @@
 <?php
 
 # Get notifications in html format
-require_once "loxberry_system.php";
-require_once "loxberry_log.php";
+require_once __DIR__ . '/bootstrap.php';
 // Read language
 $L = LBSystem::readlanguage("language.ini");
 $plugin_config_file = $lbpconfigdir."/miniserverbackup-ng.cfg";
@@ -17,6 +16,7 @@ error_reporting(E_ALL);
 ini_set("display_errors", false);
 ini_set("log_errors", 1);
 
+$plugin_cfg         = array();
 $summary            = array();
 $output             = "";
 
@@ -72,7 +72,7 @@ if ($plugin_cfg_handle)
         $line_of_text = fgets($plugin_cfg_handle);
         if (strlen($line_of_text) > 3)
         {
-            $config_line = explode('=', $line_of_text);
+            $config_line = explode('=', $line_of_text, 2);
             if ($config_line[0])
             {
                 if (!isset($config_line[1])) $config_line[1] = "";
@@ -133,7 +133,6 @@ $plugin_cfg["VERSION"] = LBSystem::pluginversion();
 
 
 ksort($plugin_cfg);
-$plugin_cfg_handle = fopen($plugin_config_file, 'w');
 
 $lbversion = LBSystem::lbversion();
 if (version_compare($lbversion, '2.0.2.0') >= 0)
@@ -156,6 +155,12 @@ if (!is_array($ms) or empty($ms))
     die($L["ERRORS.ERR_0001_NO_MINISERVERS_CONFIGURED"]);
 }
 $max_ms = max(array_keys($ms));
+$plugin_cfg_handle = fopen($plugin_config_file, 'c+');
+if (!$plugin_cfg_handle) {
+    LOGERR($L['ERRORS.ERR_0035_ERROR_WRITE_CONFIG']);
+    LOGEND('');
+    exit(1);
+}
 if (flock($plugin_cfg_handle, LOCK_EX))
 { // exklusive Sperre
     ftruncate($plugin_cfg_handle, 0); // k�rze Datei
@@ -179,7 +184,7 @@ if (flock($plugin_cfg_handle, LOCK_EX))
                         $subdir = "/".$plugin_cfg["WORKDIR_PATH_SUBDIR"];
                     }
                 }
-                system("echo '".$plugin_cfg["WORKDIR_PATH"].$subdir."' > /tmp/msb_free_space");
+                file_put_contents("/tmp/msb_free_space", $plugin_cfg["WORKDIR_PATH"].$subdir, LOCK_EX);
             }
 
 

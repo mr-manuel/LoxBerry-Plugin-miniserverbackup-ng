@@ -168,7 +168,7 @@ if (!-r _ || -z _ )
     mkdir $lbpconfigdir unless -d $lbpconfigdir or &error;
     $error_message = $ERR{'ERRORS.ERR_0031_ERROR_CREATE_CONFIG_FILE'};
     open my $configfileHandle, ">", $lbpconfigdir . "/" . $pluginconfigfile or &error;
-        print $configfileHandle "[MSBACKUP]\r\n";
+        print $configfileHandle "[MINISERVERBACKUP]\r\n";
         print $configfileHandle "VERSION=$version\r\n";
         print $configfileHandle "MSBACKUP_USE=off\r\n";
         print $configfileHandle "MSBACKUP_USE_NOTIFY=off\r\n";
